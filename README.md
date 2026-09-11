@@ -3,7 +3,7 @@
 Website e-katalog dengan tiga area:
 - **Publik** (`/`) — pelanggan lihat produk & layanan (harga per varian ukuran), cari/filter produk, masukkan ke keranjang, checkout QRIS, konfirmasi otomatis lewat WhatsApp. Ada juga tombol WhatsApp mengambang untuk kontak langsung.
 - **Admin** (`/admin`) — satu akun admin untuk kelola produk (dengan toggle tersedia/habis), layanan (dengan varian harga), dan pesanan masuk.
-- **Database** — SQLite sungguhan (`better-sqlite3`).
+- **Database** — SQLite (`better-sqlite3`).
 
 ## Menjalankan di lokal
 
@@ -15,8 +15,8 @@ npm start                 # jalan di http://localhost:3000
 
 Saat pertama kali dijalankan, server membuat `data/noona.db` dan mengisi (seed):
 - 1 akun admin
-- 4 layanan grooming (persis sesuai price list PDF yang kamu berikan)
-- **Produk kosong** — sengaja tidak ada data contoh. Tambahkan produkmu sendiri lewat dashboard admin.
+- 4 layanan grooming 
+- **Produk kosong** — sengaja tidak ada data contoh. Tambahkan produk lewat dashboard admin.
 
 Login admin default:
 - URL: `http://localhost:3000/admin/login`
@@ -48,9 +48,3 @@ public/                                     Frontend PUBLIK (index.html, css, js
 admin/                                       Frontend ADMIN (login.html, dashboard.html, css, js)
 ```
 
-## Catatan & batasan penting
-
-- **Session di memori server** — restart server = semua logout. Untuk production, pakai session store persisten (Redis/`connect-sqlite3`).
-- Sebelum online: ganti `SESSION_SECRET`, aktifkan `cookie.secure = true` (butuh HTTPS), ganti password admin default.
-- Gambar produk pakai ikon emoji sebagai default; upload foto asli lewat form produk (JPG/PNG/WEBP, maks 3MB).
-- `data/noona.db` tidak ikut ter-zip/ter-commit (`.gitignore`) — tiap setup baru mulai dari database kosong (kecuali layanan & admin yang di-seed otomatis).
