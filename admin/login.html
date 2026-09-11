@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login Admin — Noona Petshop</title>
+<link rel="icon" href="/assets/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body class="admin-body">
+
+<div class="login-wrap">
+  <div class="login-card">
+    <img src="/assets/logo.jpg" alt="Logo Noona Petshop">
+    <h1>Admin Noona Petshop</h1>
+    <p class="sub">Masuk untuk mengelola produk &amp; stok katalog.</p>
+
+    <div class="login-error" id="loginError"></div>
+
+    <form class="login-form" id="loginForm">
+      <div>
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" required>
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="login-submit" id="submitBtn">Masuk</button>
+    </form>
+
+    <a href="/" class="login-back">← Kembali ke katalog publik</a>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById("loginForm");
+const errorBox = document.getElementById("loginError");
+const submitBtn = document.getElementById("submitBtn");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  errorBox.classList.remove("show");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Memproses…";
+
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorBox.textContent = data.error || "Login gagal.";
+      errorBox.classList.add("show");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Masuk";
+      return;
+    }
+
+    window.location.href = "/admin/dashboard";
+  } catch (err) {
+    errorBox.textContent = "Tidak bisa menghubungi server. Coba lagi.";
+    errorBox.classList.add("show");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Masuk";
+  }
+});
+</script>
+</body>
+</html>

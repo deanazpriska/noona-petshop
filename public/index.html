@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noona Petshop — Katalog Produk & Layanan</title>
+<link rel="icon" href="/assets/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="nav wrap">
+    <div class="brand"><img src="/assets/logo.jpg" alt="Logo Noona Petshop"> Noona Petshop</div>
+    <div class="nav-actions">
+      <a href="#layanan" class="nav-link-desktop">Layanan</a>
+      <a href="#produk" class="nav-link-desktop">Produk</a>
+      <a href="#tentang" class="nav-link-desktop">Tentang Kami</a>
+      <button class="cart-btn" id="openCart" aria-label="Buka keranjang">
+        🛍️ <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="status-chip"><span class="status-dot"></span> Katalog publik · selalu terbuka</div>
+    <h1>Katalog produk &amp; layanan <em>Noona Petshop</em></h1>
+    <p class="lead">Jelajahi kebutuhan si bulu — makanan, grooming, aksesoris, mainan, kesehatan, hingga kandang. Belanja produk lewat keranjang, atau booking layanan langsung via WhatsApp.</p>
+  </section>
+
+  <!-- LAYANAN -->
+  <section id="layanan">
+    <div class="section-head">
+      <div class="eyebrow">Layanan kami</div>
+      <h2>Booking layanan langsung via WhatsApp</h2>
+    </div>
+    <div class="services-grid" id="servicesGrid"></div>
+  </section>
+
+  <!-- PRODUK -->
+  <section id="produk">
+    <div class="section-head" style="margin-bottom:20px;">
+      <div class="eyebrow">Etalase toko</div>
+      <h2>Belanja kebutuhan si bulu</h2>
+    </div>
+    <div class="toolbar">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Cari produk, misal: shampoo, Royal Canin, harness…" aria-label="Cari produk">
+        <select id="sortSelect" aria-label="Urutkan">
+          <option value="">Urutkan</option>
+          <option value="price_asc">Harga terendah</option>
+          <option value="price_desc">Harga tertinggi</option>
+          <option value="name_asc">Nama A–Z</option>
+        </select>
+      </div>
+      <div class="filters-row">
+        <select id="categorySelect" aria-label="Filter kategori">
+          <option value="semua">Semua kategori</option>
+        </select>
+        <div class="chip-group" id="statusChips">
+          <button class="filter-chip active" data-status="semua">Semua</button>
+          <button class="filter-chip" data-status="tersedia">Tersedia</button>
+          <button class="filter-chip" data-status="habis">Habis</button>
+        </div>
+        <span class="result-count" id="resultCount"></span>
+      </div>
+    </div>
+
+    <div class="products-grid" id="productsGrid"></div>
+
+    <div class="pagination" id="pagination"></div>
+  </section>
+
+  <!-- TENTANG KAMI -->
+  <section id="tentang">
+    <div class="section-head" style="margin-bottom:20px;">
+      <div class="eyebrow">Tentang Kami</div>
+      <h2>Jam Buka &amp; Lokasi</h2>
+    </div>
+    <div class="about-panel">
+      <div class="about-grid">
+        <div class="about-hours-col">
+          <div class="hours-list" id="hoursList"></div>
+        </div>
+        <div class="about-map-col">
+          <div class="about-map">
+            <iframe
+              src="https://www.google.com/maps?q=Noona+Petshop+%26+Pet+Care,+Jl.+Sutra+Murni,+Baqa,+Kec.+Samarinda+Seberang,+Samarinda&z=17&output=embed"
+              width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade" title="Lokasi Noona Petshop di Google Maps">
+            </iframe>
+          </div>
+          <div class="about-map-foot">
+            <span>Jl. Sutra Murni, Baqa, Kec. Samarinda Seberang, Kota Samarinda, Kalimantan Timur, 75242</span>
+            <a href="https://maps.app.goo.gl/vRikfvKb5cVi9P1M6" target="_blank" rel="noopener">Buka di Google Maps →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>© 2026 Noona Petshop. Katalog produk bersifat publik dan read-only.</p>
+    <p style="margin-top:8px;"><a href="/admin/login" style="color:#B89A78;">Staff Admin →</a></p>
+  </div>
+</footer>
+
+<!-- Product detail modal -->
+<div class="overlay" id="overlay"></div>
+
+<div class="pdetail-modal" id="pdetailModal">
+  <div class="pdetail-card">
+    <button class="close-btn" id="closeDetail">✕</button>
+    <div class="pdetail-art" id="pdetailArt">
+      <span class="pdetail-cat" id="pdetailCat"></span>
+      <span id="pdetailIcon"></span>
+    </div>
+    <div class="pdetail-body">
+      <h3 id="pdetailName"></h3>
+      <p class="desc-full" id="pdetailDesc"></p>
+      <div class="variant-pills" id="pdetailVariants"></div>
+      <div class="pdetail-price-row">
+        <span class="price-tag" id="pdetailPrice"></span>
+        <span class="pcard-status" id="pdetailStatus"></span>
+      </div>
+      <button class="add-cart-btn-full" id="pdetailAddCart" style="display:none;">+ Tambah ke Keranjang</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cart drawer -->
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h3>Keranjang kamu</h3>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="clear-cart-btn" id="clearCartBtn" title="Kosongkan keranjang">Kosongkan</button>
+      <button class="close-btn" id="closeDrawer" style="position:static;">✕</button>
+    </div>
+  </div>
+  <div class="drawer-items" id="drawerItems"></div>
+  <div class="drawer-foot">
+    <div class="sum-row total"><span>Total</span><span id="totalAmount">Rp 0</span></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" id="checkoutBtn">Bayar dengan QRIS</button>
+    <div class="pay-note">🔒 Satu-satunya metode pembayaran: QRIS</div>
+  </div>
+</div>
+
+<!-- QRIS modal -->
+<div class="qris-modal" id="qrisModal">
+  <div class="qris-card">
+    <button class="close-btn" id="closeQris">✕</button>
+    <div class="qris-logo">QRIS · Bayar Sekali Scan</div>
+    <div id="qrcode-box"></div>
+    <div class="qris-amount" id="qrisAmount">Rp 0</div>
+    <div class="qris-order" id="qrisOrder">Order #NOONA-000000</div>
+    <div class="qris-timer" id="qrisTimer">Selesaikan dalam 05:00</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:16px;" id="confirmWaBtn">✅ Sudah Bayar — Konfirmasi via WhatsApp</button>
+    <div class="qris-demo-note">Ini simulasi tampilan QRIS untuk prototipe. Setelah scan &amp; transfer manual, tekan tombol di atas untuk mengirim rincian pesananmu ke WhatsApp toko supaya segera diproses.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Kontak WhatsApp langsung -->
+<a href="#" id="waDirectFab" class="wa-direct-fab" target="_blank" rel="noopener" aria-label="Hubungi Noona Petshop via WhatsApp" title="Chat via WhatsApp">
+  <img src="/assets/whatsapp-logo.png" alt="WhatsApp" width="32" height="32">
+</a>
+
+<script src="/js/catalog.js"></script>
+</body>
+</html>

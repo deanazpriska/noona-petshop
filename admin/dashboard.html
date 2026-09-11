@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Admin — Noona Petshop</title>
+<link rel="icon" href="/assets/logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/admin/css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-nav wrap">
+    <div class="brand"><img src="/assets/logo.jpg" alt="Logo"> Noona Petshop <span style="font-weight:500;color:var(--ink-soft);font-size:.8rem;margin-left:6px;">/ admin</span></div>
+    <div class="admin-user">
+      Masuk sebagai <b id="whoami">…</b>
+      <button class="logout-btn" id="openPasswordModal" title="Ganti password">🔑</button>
+      <button class="logout-btn" id="logoutBtn">Keluar</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="produk">📦 Produk</button>
+      <button class="admin-tab" data-tab="layanan">🧾 Layanan</button>
+      <button class="admin-tab" data-tab="pesanan">🛒 Pesanan <span class="tab-badge" id="pendingOrdersBadge" style="display:none;"></span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" style="padding-bottom:60px;">
+
+  <!-- ================= TAB: PRODUK ================= -->
+  <section class="tab-panel active" id="tab-produk">
+    <div class="admin-toolbar">
+      <div>
+        <h2>Kelola Produk</h2>
+        <div class="sub" id="totalInfo">Memuat…</div>
+      </div>
+      <button class="add-product-btn" id="openAddModal">+ Tambah Produk</button>
+    </div>
+
+    <div class="toolbar" style="margin-bottom:22px;">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="Cari produk atau SKU…" aria-label="Cari produk">
+        <select id="categorySelect" aria-label="Filter kategori">
+          <option value="semua">Semua kategori</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Produk</th><th>Kategori</th><th>Harga</th><th>Tersedia</th><th>Status</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </section>
+
+  <!-- ================= TAB: LAYANAN ================= -->
+  <section class="tab-panel" id="tab-layanan">
+    <div class="admin-toolbar">
+      <div>
+        <h2>Kelola Layanan</h2>
+        <div class="sub">Grooming, Pet Hotel, dan layanan booking lainnya.</div>
+      </div>
+      <button class="add-product-btn" id="openAddServiceModal">+ Tambah Layanan</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Layanan</th><th>Deskripsi</th><th>Varian &amp; Harga</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="servicesTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= TAB: PESANAN ================= -->
+  <section class="tab-panel" id="tab-pesanan">
+    <div class="admin-toolbar">
+      <div>
+        <h2>Pesanan Masuk</h2>
+        <div class="sub" id="ordersTotalInfo">Memuat…</div>
+      </div>
+    </div>
+
+    <div class="chip-group" id="orderStatusChips" style="margin-bottom:18px;">
+      <button class="filter-chip active" data-status="semua">Semua</button>
+      <button class="filter-chip" data-status="menunggu_pembayaran">Menunggu Pembayaran</button>
+      <button class="filter-chip" data-status="dibayar">Telah Dibayar</button>
+      <button class="filter-chip" data-status="dibatalkan">Dibatalkan</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Order</th><th>Item</th><th>Total</th><th>Status</th><th>Waktu</th><th>Aksi</th></tr>
+        </thead>
+        <tbody id="ordersTableBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="ordersPagination"></div>
+  </section>
+</main>
+
+<!-- Add / Edit product modal -->
+<div class="form-modal" id="formModal">
+  <div class="form-card">
+    <h3 id="formTitle">Tambah Produk</h3>
+    <div class="form-error" id="formError"></div>
+    <form id="productForm" class="form-grid">
+      <input type="hidden" id="productId">
+      <div>
+        <label for="fName">Nama produk</label>
+        <input type="text" id="fName" required>
+      </div>
+      <div class="form-row-2">
+        <div>
+          <label for="fCategory">Kategori</label>
+          <select id="fCategory" required>
+            <option value="makanan">Makanan</option>
+            <option value="grooming">Grooming</option>
+            <option value="aksesoris">Aksesoris</option>
+            <option value="mainan">Mainan</option>
+            <option value="kesehatan">Kesehatan</option>
+            <option value="kandang">Kandang</option>
+          </select>
+        </div>
+        <div>
+          <label for="fIcon">Ikon (emoji)</label>
+          <input type="text" id="fIcon" maxlength="4" placeholder="🐾">
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div>
+          <label for="fPrice">Harga (Rp)</label>
+          <input type="number" id="fPrice" min="0" required>
+          <div class="field-hint" id="fPriceHint" style="display:none;">Nonaktif — harga diambil dari varian di bawah.</div>
+        </div>
+        <div>
+          <label>Ketersediaan</label>
+          <div class="toggle-row">
+            <label class="switch">
+              <input type="checkbox" id="fAvailable" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span id="fAvailableLabel">Tersedia</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label for="fSku">SKU (kosongkan untuk otomatis)</label>
+        <input type="text" id="fSku" placeholder="NN-XX-0000">
+      </div>
+      <div>
+        <label>Varian &amp; harga (opsional — misal 50 gram / 100 gram dengan harga beda-beda)</label>
+        <div id="variantsEditor" class="tiers-editor"></div>
+        <button type="button" class="btn-add-tier" id="addVariantBtn">+ Tambah varian</button>
+        <div class="field-hint">Kalau diisi, field "Harga" di atas tidak dipakai lagi — pelanggan wajib pilih salah satu varian.</div>
+      </div>
+      <div>
+        <label for="fImageInput">Foto produk (JPG/PNG/WEBP, maks 3MB)</label>
+        <div class="image-upload-row">
+          <div class="image-preview" id="imagePreview"><span id="imagePreviewEmpty">Belum ada foto</span></div>
+          <div class="image-upload-actions">
+            <label class="btn-pick-file" for="fImageInput">Pilih foto…</label>
+            <input type="file" id="fImageInput" accept="image/jpeg,image/png,image/webp" hidden>
+            <button type="button" class="btn-remove-photo" id="removePhotoBtn" style="display:none;">Hapus foto</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label for="fDesc">Deskripsi</label>
+        <textarea id="fDesc"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" id="cancelForm">Batal</button>
+        <button type="submit" class="btn-save" id="saveFormBtn">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add / Edit service modal -->
+<div class="form-modal" id="serviceFormModal">
+  <div class="form-card">
+    <h3 id="serviceFormTitle">Tambah Layanan</h3>
+    <div class="form-error" id="serviceFormError"></div>
+    <form id="serviceForm" class="form-grid">
+      <input type="hidden" id="serviceId">
+      <div>
+        <label for="sName">Nama layanan</label>
+        <input type="text" id="sName" required>
+      </div>
+      <div class="form-row-2">
+        <div>
+          <label for="sIcon">Ikon (emoji)</label>
+          <input type="text" id="sIcon" maxlength="4" placeholder="🛁">
+        </div>
+      </div>
+      <div>
+        <label for="sDesc">Deskripsi</label>
+        <textarea id="sDesc"></textarea>
+      </div>
+      <div>
+        <label>Varian &amp; harga (misal per ukuran S/M/L, atau per jenis layanan)</label>
+        <div id="tiersEditor" class="tiers-editor"></div>
+        <button type="button" class="btn-add-tier" id="addTierBtn">+ Tambah varian</button>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" id="cancelServiceForm">Batal</button>
+        <button type="submit" class="btn-save" id="saveServiceFormBtn">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Change password modal -->
+<div class="form-modal" id="passwordModal">
+  <div class="form-card" style="width:380px;">
+    <h3>Ganti Password</h3>
+    <div class="form-error" id="passwordFormError"></div>
+    <form id="passwordForm" class="form-grid">
+      <div>
+        <label for="currentPassword">Password lama</label>
+        <input type="password" id="currentPassword" required autocomplete="current-password">
+      </div>
+      <div>
+        <label for="newPassword">Password baru (min. 6 karakter)</label>
+        <input type="password" id="newPassword" required minlength="6" autocomplete="new-password">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" id="cancelPasswordForm">Batal</button>
+        <button type="submit" class="btn-save">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/admin/js/dashboard.js"></script>
+</body>
+</html>

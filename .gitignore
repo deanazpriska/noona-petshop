@@ -1,0 +1,8 @@
+node_modules/
+.env
+*.log
+public/uploads/products/*
+!public/uploads/products/.gitkeep
+data/noona.db
+data/noona.db-wal
+data/noona.db-shm
