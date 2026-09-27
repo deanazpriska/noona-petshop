@@ -1,7 +1,7 @@
 # Noona Petshop — E-Katalog
 
 Website e-katalog dengan tiga area:
-- **Publik** (`/`) — pelanggan lihat produk & layanan (harga per varian ukuran), cari/filter produk, masukkan ke keranjang, checkout QRIS, konfirmasi otomatis lewat WhatsApp. Ada juga tombol WhatsApp mengambang untuk kontak langsung.
+- **Publik** (`/`) — pelanggan lihat produk & layanan (harga per varian ukuran), cari/filter produk, masukkan ke keranjang, lalu checkout langsung membuka WhatsApp untuk konfirmasi pesanan. Ada juga tombol WhatsApp mengambang untuk kontak langsung.
 - **Admin** (`/admin`) — satu akun admin untuk kelola produk (dengan toggle tersedia/habis), layanan (dengan varian harga), dan pesanan masuk.
 - **Database** — SQLite sungguhan (`better-sqlite3`).
 
@@ -52,15 +52,14 @@ Admin mengubah status ini manual di tab "Pesanan" pada dashboard setelah mengece
 
 **Pesan konfirmasi pesanan pakai teks polos**, tanpa emoji, biar terlihat profesional saat dikirim ke pelanggan lewat WhatsApp.
 
-## Alur belanja: keranjang → QRIS → konfirmasi WhatsApp
+## Alur belanja: keranjang → checkout → WhatsApp
 
 1. Pelanggan tambah produk ke **keranjang** (`localStorage` browser, jadi tidak hilang saat refresh).
-2. Klik **"Bayar dengan QRIS"** → sistem membuat **pesanan** lewat `POST /api/orders`. Harga & nama produk **dihitung ulang dari database**, bukan dari data yang dikirim browser.
-3. Muncul QR code (demo) beserta nomor order & total. Status pesanan otomatis **"Menunggu Pembayaran"**.
-4. Pelanggan tekan **"Sudah Bayar — Konfirmasi via WhatsApp"** → terbuka chat WhatsApp ke `WA_NUMBER` dengan pesan berisi nomor order, daftar item, dan total. Keranjang otomatis dikosongkan.
-5. Admin melihat pesanan ini di tab **"Pesanan"**, mencocokkan dengan chat WhatsApp & bukti transfer, lalu ubah status jadi **Telah Dibayar** atau **Dibatalkan**.
+2. Klik **"Pesan Sekarang"** → sistem membuat **pesanan** lewat `POST /api/orders`. Harga & nama produk **dihitung ulang dari database**, bukan dari data yang dikirim browser. Status pesanan otomatis **"Menunggu Pembayaran"**.
+3. Browser langsung membuka chat WhatsApp ke `WA_NUMBER` dengan pesan berisi nomor order, daftar item, dan total, sekaligus minta info ketersediaan & cara pembayaran. Keranjang otomatis dikosongkan.
+4. Admin melihat pesanan ini di tab **"Pesanan"**, mencocokkan dengan chat WhatsApp & bukti transfer, lalu ubah status jadi **Telah Dibayar** atau **Dibatalkan**.
 
-QRIS yang tampil adalah **simulasi**, bukan payload QRIS resmi — payment gateway berlisensi (Xendit, Midtrans, dll) perlu akun bisnis yang harus didaftarkan terpisah nanti kalau mau go-live. Ketersediaan produk (toggle tersedia/habis) juga **tidak berubah otomatis** saat ada pesanan masuk — itu tetap dikontrol manual admin di tab Produk.
+Tidak ada QR code atau payment gateway di alur ini — pembayaran & konfirmasinya sepenuhnya lewat percakapan WhatsApp manual dengan admin. Ketersediaan produk (toggle tersedia/habis) juga **tidak berubah otomatis** saat ada pesanan masuk — itu tetap dikontrol manual admin di tab Produk.
 
 Layanan (grooming) tetap booking langsung via WhatsApp (bukan lewat keranjang), karena sifatnya jadwal kunjungan, bukan barang yang bisa dihitung jumlahnya.
 
