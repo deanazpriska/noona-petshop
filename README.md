@@ -31,11 +31,27 @@ Nomor WhatsApp toko diisi di `.env.example` sebagai `WA_NUMBER` (`628156587891`)
 
 **Produk dimulai kosong.** Tidak ada data dummy/contoh yang ter-seed otomatis untuk tabel produk — begitu admin login pertama kali, katalog langsung diisi dengan produk asli sendiri lewat dashboard.
 
-**Layanan pakai skema varian/tingkatan harga**, bukan satu harga flat per layanan, supaya sesuai cara Noona Petshop menetapkan harga grooming per ukuran (S/M/L/XL/XXL):
+**Layanan dipecah jadi 3 kategori: Grooming, Pet Care, Pet Hotel.** Di halaman publik, pelanggan pilih kategori dulu (lewat rute `/layanan/<kategori>`) baru melihat daftar layanan pada kategori itu sebagai kartu.
+
+**Grooming** — 4 layanan hasil seed dari price list resmi, harga per ukuran (S/M/L/XL/XXL):
 - **Basic Grooming** — mandi, potong kuku, bersihkan telinga, parfum
 - **Treatment Grooming** — mandi shampo khusus jamur & kutu, potong kuku, bersihkan telinga, parfum
 - **Luxury Grooming** — mandi shampo mewah, potong kuku, rapikan bulu kaki, bersihkan telinga, parfum
 - **Other Treatment** — item à la carte: Lion Cut, Paw/Butt Trimming, Nail Trimming, Ear Cleaning, Matted Shaved
+
+**Pet Care** — 6 layanan tanpa daftar harga tetap (harganya disesuaikan dengan kondisi anabul saat konsultasi/booking, ada catatan "*Harga disesuaikan dengan treatment yang diberikan" di halaman kategori ini):
+- **Check Up** — pemeriksaan kondisi kesehatan anabul secara menyeluruh
+- **Konsultasi** — konsultasi mengenai kondisi dan kebutuhan kesehatan anabul
+- **Vaksin** — layanan vaksinasi
+- **Home Visit** — pemeriksaan & perawatan lewat kunjungan ke rumah
+- **Steril Jantan & Betina** — tindakan sterilisasi anabul jantan/betina
+- **Minor Surgery** — tindakan bedah ringan sesuai kondisi anabul
+
+**Pet Hotel** — 2 layanan dengan harga per hari, ditampilkan sebagai kartu horizontal bertumpuk (beda dari grid vertikal Grooming & Pet Care):
+- **Pet Hotel** — Rp 40.000/hari (include pasir) atau Rp 45.000/hari (include pasir & pakan standar); ada syarat & ketentuan di deskripsinya (anabul sehat, bebas jamur/kutu, sudah vaksin minimal pertama + buku vaksin)
+- **Rawat Inap** — Rp 55.000/hari, untuk masa pemulihan
+
+Kalau suatu kategori/layanan belum ada isinya sama sekali, halaman publik otomatis menampilkan "Segera hadir" — jadi ketiga kategori ini aman ditambah atau dikosongkan lagi kapan pun lewat dashboard admin tanpa perlu ubah kode.
 
 Jam operasional (Pet Shop & Pet Clinic 09.00–21.00, Pet Grooming 09.00–16.00, tutup tiap Kamis) ditampilkan sebagai banner kecil di halaman publik. Di dashboard admin, form layanan punya **editor varian dinamis** — tombol "+ Tambah varian" untuk menambah baris (nama varian + harga), dan tombol ✕ di tiap baris untuk menghapusnya. Bisa dipakai untuk varian ukuran (seperti grooming) maupun daftar item flat (seperti Other Treatment, tiap item jadi satu "varian").
 
@@ -75,11 +91,11 @@ server.js                       Entry point Express + session + routing
 middleware/auth.js               requireAuth — kunci semua route/API admin
 routes/auth.routes.js             login, logout, cek status login, ganti password
 routes/products.routes.js          GET publik + POST/PUT/DELETE admin-only + toggle availability + upload foto
-routes/services.routes.js           GET publik + POST/PUT/DELETE admin-only (tiers)
+routes/services.routes.js           GET publik (bisa filter ?category=) + POST/PUT/DELETE admin-only (tiers)
 routes/orders.routes.js              POST publik (buat pesanan) + GET/PATCH admin-only (status)
 db/connection.js                      Skema tabel + seed admin & layanan (produk sengaja kosong)
 db/products.js                         Query produk, termasuk toggle available
-db/services.js                          Query layanan dengan tiers (JSON per baris)
+db/services.js                          Query layanan dengan tiers (JSON per baris) + kategori (grooming/pet-care/pet-hotel)
 db/users.js                              Query akun admin
 db/orders.js                              Query pesanan, hitung ulang harga dari DB
 scripts/hash-password.js                  Utilitas cetak hash password (untuk .env)
