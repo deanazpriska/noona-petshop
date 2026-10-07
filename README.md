@@ -4,7 +4,7 @@
 Website e-katalog dengan tiga area:
 - **Publik** (`/`) — pelanggan lihat produk & layanan (harga per varian ukuran), cari/filter produk, masukkan ke keranjang, lalu checkout langsung membuka WhatsApp untuk konfirmasi pesanan. Ada juga tombol WhatsApp mengambang untuk kontak langsung.
 - **Admin** (`/admin`) — satu akun admin untuk kelola produk (dengan toggle tersedia/habis), layanan (dengan varian harga), dan pesanan masuk.
-- **Database** — SQLite sungguhan (`better-sqlite3`).
+- **Database** — SQLite (`better-sqlite3`).
 
 ## Menjalankan di lokal
 
@@ -19,12 +19,10 @@ Saat pertama kali dijalankan, server otomatis membuat `data/noona.db` dan mengis
 - 4 layanan grooming (sesuai price list resmi Noona Petshop)
 - **Produk kosong** — sengaja tidak ada data contoh, produk ditambahkan sendiri lewat dashboard admin.
 
-Login admin default (**ganti segera setelah login pertama**):
+Login admin default
 - URL: `http://localhost:3000/admin/login`
 - Username: `admin`
 - Password: `noona123`
-
-Nomor WhatsApp toko diisi di `.env.example` sebagai `WA_NUMBER` (`628156587891`). Ganti sesuai kebutuhan.
 
 > Kalau setup ulang dari database lama, hapus dulu `data/noona.db`, `data/noona.db-wal`, dan `data/noona.db-shm` sebelum `npm start`, supaya skema tabel terbaru terbentuk dari awal.
 
