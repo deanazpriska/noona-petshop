@@ -1,0 +1,26 @@
+{
+  "name": "noona-petshop-ecatalog",
+  "version": "3.0.0",
+  "description": "E-katalog Noona Pet Shop — katalog & layanan publik, keranjang + checkout konfirmasi WhatsApp, dashboard admin. Database & foto di Supabase (Postgres + Storage).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "hash-password": "node scripts/hash-password.js",
+    "reset-admin-password": "node scripts/reset-admin-password.js",
+    "migrate-from-sqlite": "node scripts/migrate-from-sqlite.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "multer": "^2.2.0",
+    "pg": "^8.23.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

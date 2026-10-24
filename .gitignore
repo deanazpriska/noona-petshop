@@ -1,0 +1,12 @@
+# Rahasia — jangan pernah di-commit
+.env
+
+# Dependensi (dipasang ulang lewat npm install)
+node_modules/
+
+# Database lokal lama (sebelum pindah ke Supabase)
+data/
+
+# Sistem
+.DS_Store
+Thumbs.db
