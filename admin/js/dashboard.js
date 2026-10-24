@@ -567,12 +567,26 @@ async function loadOrders() {
 function renderOrdersTable(items) {
   const tbody = document.getElementById("ordersTableBody");
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--ink-soft);">Belum ada pesanan.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--ink-soft);">Belum ada pesanan.</td></tr>`;
     return;
   }
   tbody.innerHTML = items
     .map((o) => {
-      const itemsHtml = o.items.map((li) => `<div>${escapeHtml(li.name)}${li.variantLabel ? ` (${escapeHtml(li.variantLabel)})` : ""} x${li.qty}</div>`).join("");
+      const itemsHtml = o.items
+        .map((li) => `<div class="item-line">${escapeHtml(li.name)}${li.variantLabel ? ` (${escapeHtml(li.variantLabel)})` : ""}</div>`)
+        .join("");
+      const qtyHtml = o.items
+        .map(
+          (li, idx) =>
+            `<div class="item-line"><input type="number" class="qty-input" min="1" step="1" value="${li.qty}" data-original="${li.qty}" onchange="updateOrderItemQty(${o.id}, ${idx}, this)" onkeydown="if(event.key==='Enter')this.blur()" aria-label="Qty ${escapeHtml(li.name)}"></div>`
+        )
+        .join("");
+      const deleteHtml = o.items
+        .map(
+          (li, idx) =>
+            `<div class="item-line"><button class="icon-btn danger" title="Hapus item" onclick="deleteOrderItem(${o.id}, ${idx}, ${o.items.length})">🗑️</button></div>`
+        )
+        .join("");
       const time = new Date(o.created_at).toLocaleString("id-ID", {
         dateStyle: "medium",
         timeStyle: "short",
@@ -581,6 +595,7 @@ function renderOrdersTable(items) {
       <tr>
         <td><span class="order-code">${o.order_code}</span></td>
         <td class="order-items-cell">${itemsHtml}</td>
+        <td class="order-qty-cell">${qtyHtml}</td>
         <td>${rupiah(o.total)}</td>
         <td>
           <select class="status-select" onchange="updateOrderStatus(${o.id}, this.value)">
@@ -588,7 +603,12 @@ function renderOrdersTable(items) {
           </select>
         </td>
         <td style="font-size:.76rem;color:var(--ink-soft);">${time}</td>
-        <td><span class="badge status-${o.status}">${orderStatusLabel[o.status]}</span></td>
+        <td>
+          <div class="order-action-cell">
+            <span class="badge status-${o.status}">${orderStatusLabel[o.status]}</span>
+            <div class="order-delete-col">${deleteHtml}</div>
+          </div>
+        </td>
       </tr>`;
     })
     .join("");
@@ -612,6 +632,46 @@ async function updateOrderStatus(id, status) {
     loadOrders();
   } catch {
     showToast("Gagal memperbarui status pesanan");
+  }
+}
+
+async function updateOrderItemQty(orderId, index, input) {
+  const qty = Number(input.value);
+  if (!Number.isInteger(qty) || qty < 1) {
+    showToast("Jumlah minimal 1");
+    input.value = input.dataset.original;
+    return;
+  }
+  if (String(qty) === input.dataset.original) return;
+  try {
+    const res = await authFetch(`/api/orders/${orderId}/items/${index}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ qty }),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    showToast("Jumlah item diperbarui ✓");
+    loadOrders();
+  } catch (err) {
+    showToast(err.message || "Gagal memperbarui jumlah item");
+    input.value = input.dataset.original;
+  }
+}
+
+async function deleteOrderItem(orderId, index, itemCount) {
+  const msg =
+    itemCount <= 1
+      ? "Ini item terakhir di pesanan. Menghapusnya akan menghapus SELURUH pesanan. Lanjutkan?"
+      : "Hapus item ini dari pesanan? Total pesanan akan dihitung ulang.";
+  if (!confirm(msg)) return;
+  try {
+    const res = await authFetch(`/api/orders/${orderId}/items/${index}`, { method: "DELETE" });
+    if (!res.ok) throw new Error((await res.json()).error);
+    const data = await res.json();
+    showToast(data.deletedOrder ? "Pesanan dihapus ✓" : "Item dihapus dari pesanan ✓");
+    loadOrders();
+  } catch (err) {
+    showToast(err.message || "Gagal menghapus item");
   }
 }
 

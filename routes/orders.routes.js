@@ -57,4 +57,28 @@ router.patch(
   })
 );
 
+// PATCH /api/orders/:id/items/:index   body: { qty }
+router.patch(
+  "/:id/items/:index",
+  requireAuth,
+  wrap(async (req, res) => {
+    const { qty } = req.body || {};
+    const result = await db.updateItemQty(req.params.id, req.params.index, qty);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json(result.order);
+  })
+);
+
+// DELETE /api/orders/:id/items/:index
+router.delete(
+  "/:id/items/:index",
+  requireAuth,
+  wrap(async (req, res) => {
+    const result = await db.removeItem(req.params.id, req.params.index);
+    if (result.error) return res.status(400).json({ error: result.error });
+    if (result.deletedOrder) return res.json({ deletedOrder: true });
+    res.json(result.order);
+  })
+);
+
 module.exports = router;

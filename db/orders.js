@@ -130,4 +130,69 @@ async function updateStatus(id, status) {
   return { order: await getById(id) };
 }
 
-module.exports = { create, getByCode, getById, getAll, updateStatus, VALID_STATUS };
+/**
+ * Ubah jumlah (qty) satu item di dalam pesanan. Subtotal & total dihitung ulang
+ * di server dari harga yang sudah tersimpan di item tersebut.
+ */
+async function updateItemQty(id, index, qty) {
+  const order = await getById(id);
+  if (!order) return { error: "Pesanan tidak ditemukan." };
+
+  const i = Number(index);
+  if (!Number.isInteger(i) || i < 0 || i >= order.items.length) {
+    return { error: "Item tidak ditemukan." };
+  }
+  const n = Number(qty);
+  if (!Number.isInteger(n) || n < 1) {
+    return { error: "Jumlah harus bilangan bulat minimal 1." };
+  }
+
+  const items = order.items.map((li, idx) =>
+    idx === i ? { ...li, qty: n, subtotal: li.price * n } : li
+  );
+  const total = items.reduce((sum, li) => sum + li.subtotal, 0);
+
+  await run(
+    "UPDATE orders SET items_json = $1, total = $2, updated_at = now() WHERE id = $3",
+    [JSON.stringify(items), total, order.id]
+  );
+  return { order: await getById(id) };
+}
+
+/**
+ * Hapus satu item dari pesanan. Kalau itu item terakhir, seluruh pesanan ikut dihapus
+ * (frontend sudah meminta konfirmasi sebelumnya).
+ */
+async function removeItem(id, index) {
+  const order = await getById(id);
+  if (!order) return { error: "Pesanan tidak ditemukan." };
+
+  const i = Number(index);
+  if (!Number.isInteger(i) || i < 0 || i >= order.items.length) {
+    return { error: "Item tidak ditemukan." };
+  }
+  if (order.items.length === 1) {
+    await run("DELETE FROM orders WHERE id = $1", [order.id]);
+    return { deletedOrder: true };
+  }
+
+  const items = order.items.filter((_, idx) => idx !== i);
+  const total = items.reduce((sum, li) => sum + li.subtotal, 0);
+
+  await run(
+    "UPDATE orders SET items_json = $1, total = $2, updated_at = now() WHERE id = $3",
+    [JSON.stringify(items), total, order.id]
+  );
+  return { order: await getById(id) };
+}
+
+module.exports = {
+  create,
+  getByCode,
+  getById,
+  getAll,
+  updateStatus,
+  updateItemQty,
+  removeItem,
+  VALID_STATUS,
+};

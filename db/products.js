@@ -85,14 +85,23 @@ async function getByIds(ids) {
   return rows.map(rowToProduct);
 }
 
+async function nextCustomSku() {
+  const rows = await all("SELECT sku FROM products WHERE sku ~ '^NN-CUSTOM-[0-9]+$'");
+  const used = new Set(rows.map((r) => parseInt(r.sku.slice("NN-CUSTOM-".length), 10)));
+  let n = 1;
+  while (used.has(n)) n++;
+  return `NN-CUSTOM-${String(n).padStart(4, "0")}`;
+}
+
 async function create(product) {
   const available = product.available === false || product.available === 0 ? 0 : 1;
   const variants = normalizeVariants(product.variants);
 
-  // SKU otomatis diambil dari id baru (bukan dari jumlah baris), jadi tidak bisa bentrok
-  // walaupun ada produk yang pernah dihapus.
+  // id database tetap dari sequence (tidak pernah dipakai ulang, supaya aman).
   const { id } = await get("SELECT nextval(pg_get_serial_sequence('products', 'id'))::int AS id");
-  const sku = product.sku || `NN-CUSTOM-${String(id).padStart(4, "0")}`;
+  // SKU otomatis = nomor kosong terkecil di antara NN-CUSTOM-xxxx yang masih ada, jadi
+  // kalau 0002 dihapus produk berikutnya memakai 0002 lagi, dan kalau semua dihapus mulai lagi dari 0001.
+  const sku = product.sku || (await nextCustomSku());
 
   await run(
     `INSERT INTO products (id, sku, name, category, icon, image, price, variants, available, status, description)

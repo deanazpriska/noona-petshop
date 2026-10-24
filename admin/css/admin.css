@@ -66,6 +66,17 @@ body.admin-body{background:var(--bg-deep);}
 .order-code{font-family:var(--font-mono);font-size:.78rem;font-weight:600;}
 .order-items-cell{font-size:.78rem;color:var(--ink-soft);max-width:260px;}
 .order-items-cell div{margin-bottom:2px;}
+/* tiap baris item punya tinggi sama supaya Item / Qty / tombol hapus sejajar */
+.order-items-cell .item-line,
+.order-qty-cell .item-line,
+.order-delete-col .item-line{height:36px;display:flex;align-items:center;margin-bottom:0;}
+.order-action-cell{display:flex;justify-content:space-between;align-items:center;gap:14px;}
+.order-delete-col{display:flex;flex-direction:column;margin-left:auto;}
+.qty-input{
+  width:64px;border:1px solid var(--line);border-radius:8px;padding:5px 8px;
+  font-family:var(--font-body);font-size:.8rem;background:var(--bg);color:var(--ink);text-align:center;
+}
+.qty-input:focus{outline:none;border-color:var(--deep);}
 .status-select{
   border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-family:var(--font-body);
   font-size:.78rem;background:var(--bg);cursor:pointer;
