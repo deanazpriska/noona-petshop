@@ -77,6 +77,11 @@ const SCHEMA_SQL = `
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );
 
+  -- Multi-foto produk: "images" = daftar URL (urutan pertama = foto utama / sampul).
+  -- Kolom "image" tetap dipakai sebagai salinan foto utama supaya kode lama tetap jalan.
+  ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]';
+  UPDATE products SET images = jsonb_build_array(image) WHERE image IS NOT NULL AND images = '[]'::jsonb;
+
   CREATE TABLE IF NOT EXISTS services (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,

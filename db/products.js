@@ -17,7 +17,19 @@ function rowToProduct(row) {
   if (!row) return row;
   const variants = Array.isArray(row.variants) ? row.variants : [];
   const startingPrice = variants.length ? Math.min(...variants.map((v) => v.price)) : row.price;
-  return { ...row, variants, startingPrice };
+  // images = semua foto (urutan pertama = sampul). "image" selalu disamakan dengan foto pertama.
+  let images = Array.isArray(row.images) ? row.images.filter(Boolean) : [];
+  if (!images.length && row.image) images = [row.image];
+  return { ...row, images, image: images[0] || null, variants, startingPrice };
+}
+
+// Maks. foto per produk (dipakai juga oleh route upload).
+const MAX_IMAGES = 5;
+
+// Dari daftar URL kiriman admin, ambil hanya yang memang foto milik produk ini (urutan dari admin dipertahankan).
+function normalizeImages(list, allowed) {
+  if (!Array.isArray(list)) return allowed;
+  return [...new Set(list.filter((u) => typeof u === "string" && allowed.includes(u)))];
 }
 
 const SORTS = {
@@ -132,10 +144,14 @@ async function update(id, updates) {
   const variants =
     updates.variants !== undefined ? normalizeVariants(updates.variants) : existing.variants;
 
+  // Kalau admin mengirim "images", itu daftar foto yang DIPERTAHANKAN (yang tidak ada = dihapus).
+  const images =
+    updates.images !== undefined ? normalizeImages(updates.images, existing.images) : existing.images;
+
   await run(
     `UPDATE products SET
        sku=$1, name=$2, category=$3, icon=$4, price=$5, variants=$6,
-       available=$7, status=$8, description=$9, updated_at=now()
+       available=$7, status=$8, description=$9, images=$11, image=$12, updated_at=now()
      WHERE id=$10`,
     [
       updates.sku ?? existing.sku,
@@ -148,6 +164,8 @@ async function update(id, updates) {
       statusFromAvailable(available),
       updates.description ?? existing.description,
       Number(id),
+      JSON.stringify(images),
+      images[0] || null,
     ]
   );
 
@@ -164,21 +182,17 @@ async function remove(id) {
   return (await run("DELETE FROM products WHERE id = $1", [n])) > 0;
 }
 
-async function setImage(id, imageUrl) {
+// Tambah satu/lebih foto ke akhir daftar. Foto pertama otomatis jadi sampul.
+async function addImages(id, urls) {
   const existing = await getById(id);
   if (!existing) return null;
-  await run("UPDATE products SET image = $1, updated_at = now() WHERE id = $2", [
-    imageUrl,
+  const images = [...existing.images, ...urls];
+  await run("UPDATE products SET images = $1, image = $2, updated_at = now() WHERE id = $3", [
+    JSON.stringify(images),
+    images[0] || null,
     Number(id),
   ]);
-  return { product: await getById(id), previousImage: existing.image };
-}
-
-async function removeImage(id) {
-  const existing = await getById(id);
-  if (!existing) return null;
-  await run("UPDATE products SET image = NULL, updated_at = now() WHERE id = $1", [Number(id)]);
-  return { product: await getById(id), previousImage: existing.image };
+  return getById(id);
 }
 
 module.exports = {
@@ -190,7 +204,7 @@ module.exports = {
   update,
   updateAvailability,
   remove,
-  setImage,
-  removeImage,
+  addImages,
+  MAX_IMAGES,
   statusFromAvailable,
 };

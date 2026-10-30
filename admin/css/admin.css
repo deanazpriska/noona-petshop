@@ -177,6 +177,41 @@ table.admin-table{width:100%;border-collapse:collapse;font-size:.87rem;}
 }
 .btn-remove-photo:hover{border-color:var(--primary-ink);}
 
+/* ---------- galeri multi-foto produk ---------- */
+.image-gallery{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 12px;}
+.gallery-item{position:relative;width:76px;height:76px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--bg);}
+.gallery-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.gallery-badge{
+  position:absolute;left:4px;bottom:4px;background:var(--deep-dark);color:#fff;font-size:.6rem;
+  font-weight:700;padding:2px 7px;border-radius:100px;
+}
+.gallery-remove{
+  position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(58,35,19,.85);color:#fff;font-size:.7rem;line-height:1;display:flex;align-items:center;justify-content:center;
+}
+.gallery-remove:hover{background:var(--primary-ink);}
+.gallery-empty{font-size:.78rem;color:var(--ink-soft);border:1px dashed var(--line);border-radius:14px;padding:22px 16px;width:100%;text-align:center;background:var(--bg);}
+
+/* ---------- gambar kartu kategori layanan ---------- */
+.cat-images-panel{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px 22px 22px;box-shadow:var(--shadow);margin-bottom:22px;}
+.cat-images-panel h3{font-size:1.05rem;}
+.cat-images-panel .sub{color:var(--ink-soft);font-size:.8rem;margin:4px 0 14px;}
+.cat-images-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.cat-image-slot{background:var(--deep-dark);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px;}
+.cat-image-preview{aspect-ratio:4/3;border-radius:12px;background:rgba(245,239,224,.12);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.cat-image-preview img{width:100%;height:100%;object-fit:cover;display:block;}
+.cat-image-preview span{font-size:.72rem;color:rgba(255,255,255,.7);}
+.cat-image-name{color:#fff;font-family:var(--font-display);font-weight:700;text-align:center;}
+.cat-image-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.cat-image-actions .btn-pick-file{background:var(--surface);color:var(--deep-dark);}
+.cat-image-actions .btn-remove-photo{background:none;border-color:rgba(255,255,255,.4);color:#fff;}
+
+/* ---------- kolom Varian & Harga di tabel produk (tiap baris varian sejajar) ---------- */
+.vp-line{height:26px;display:flex;align-items:center;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;}
+.vp-line.vp-price{font-family:var(--font-mono);font-weight:600;font-size:.78rem;color:var(--ink);}
+.vp-cell .vp-line:not(.vp-price){font-size:.78rem;color:var(--ink-soft);}
+.vp-empty{color:var(--ink-soft);opacity:.6;}
+
 /* ---------- table thumbnail ---------- */
 .prod-thumb{width:34px;height:34px;border-radius:9px;object-fit:cover;flex-shrink:0;}
 .prod-icon{font-size:1.3rem;width:34px;text-align:center;flex-shrink:0;}
@@ -189,6 +224,21 @@ table.admin-table{width:100%;border-collapse:collapse;font-size:.87rem;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 @media (max-width:720px){
+  .cat-images-grid{grid-template-columns:1fr;}
   .table-wrap{overflow-x:auto;}
   table.admin-table{min-width:700px;}
+}
+
+/* kolom Varian & Harga dirapatkan (lebar mengikuti isi) */
+.admin-table .col-fit{width:1%;white-space:nowrap;}
+.admin-table .col-varian{padding-right:8px;}
+.admin-table th.col-fit:nth-child(4),.admin-table td.col-fit:nth-child(4){padding-left:8px;padding-right:28px;}
+
+/* mobile: nama item panjang dibungkus (maks 3 baris) agar tidak menumpuk, baris Item/Qty/Hapus tetap sejajar */
+@media (max-width:720px){
+  .order-items-cell{min-width:190px;}
+  .order-items-cell .item-line,
+  .order-qty-cell .item-line,
+  .order-delete-col .item-line{height:66px;}
+  .order-items-cell .item-line{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;line-height:1.3;align-items:normal;padding:2px 0;}
 }

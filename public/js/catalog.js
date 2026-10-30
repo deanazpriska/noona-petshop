@@ -32,8 +32,18 @@ function waLink(msg) {
   return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
 }
 
-// Template pesan booking layanan
-function buildBookingMessage(serviceName) {
+// Template pesan booking layanan.
+// selections = varian yang dicentang pelanggan ([{ label, price }]); kalau ada, ditampilkan
+// berurutan di bawah nama layanan, lalu baris Total di bawahnya.
+function buildBookingMessage(serviceName, selections = []) {
+  let layananBlock = `Layanan yang Dibooking: ${serviceName}\n`;
+  if (selections.length > 0) {
+    const total = selections.reduce((sum, s) => sum + s.price, 0);
+    layananBlock +=
+      selections.map((s, i) => `${i + 1}. ${s.label} - ${rupiah(s.price)}`).join("\n") +
+      `\n` +
+      `Total: ${rupiah(total)}\n`;
+  }
   return (
     `Halo, Noona Petshop!\n` +
     `Saya ingin booking layanan yang tersedia di Noona Petshop.\n` +
@@ -41,7 +51,29 @@ function buildBookingMessage(serviceName) {
     `*DETAIL LAYANAN*\n` +
     `______________________\n` +
     `\n` +
-    `Layanan yang Dibooking: ${serviceName}\n` +
+    layananBlock +
+    `\n` +
+    `Apakah slot layanan tersebut masih tersedia?`
+  );
+}
+
+// Pesan booking gabungan: semua layanan (Grooming / Pet Hotel) yang dicentang dalam satu pesan.
+// groups = [{ name, items: [{ label, price }] }]
+function buildCombinedBookingMessage(groups) {
+  const total = groups.reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.price, 0), 0);
+  const block = groups
+    .map((g) => `*${g.name}*\n` + g.items.map((i, n) => `${n + 1}. ${i.label} - ${rupiah(i.price)}`).join("\n"))
+    .join("\n\n");
+  return (
+    `Halo, Noona Petshop!\n` +
+    `Saya ingin booking layanan yang tersedia di Noona Petshop.\n` +
+    `\n` +
+    `*DETAIL LAYANAN*\n` +
+    `______________________\n` +
+    `\n` +
+    block +
+    `\n\n` +
+    `Total: ${rupiah(total)}\n` +
     `\n` +
     `Apakah slot layanan tersebut masih tersedia?`
   );
@@ -57,7 +89,11 @@ const LAYANAN_META = {
   "pet-hotel": { label: "Pet Hotel", icon: "🏠" },
 };
 
-function renderServiceTickets(services, grid) {
+// Kategori yang variannya bisa dicentang pelanggan sebelum booking (Pet Care tidak punya daftar harga).
+const SELECTABLE_CATEGORIES = ["grooming", "pet-hotel"];
+
+function renderServiceTickets(services, grid, category) {
+  const selectable = SELECTABLE_CATEGORIES.includes(category);
   if (!services || services.length === 0) {
     grid.innerHTML = `<div class="empty-state"><div class="emoji">🐾</div>Segera hadir.<br>Layanan ini masih kami siapkan.</div>`;
     return;
@@ -67,7 +103,7 @@ function renderServiceTickets(services, grid) {
     .map((s) => {
       const hasPrice = s.tiers && s.tiers.length > 0;
       return `
-    <div class="ticket">
+    <div class="ticket" data-service="${escapeHtml(s.name)}">
       <div class="ticket-top">
         <div class="ticket-icon">${s.icon}</div>
         <h3>${escapeHtml(s.name)}</h3>
@@ -75,30 +111,105 @@ function renderServiceTickets(services, grid) {
         ${
           hasPrice
             ? `<div class="tier-price-list">
-          ${s.tiers.map((t) => `<div class="tier-price-row"><span>${escapeHtml(t.label)}</span><b>${rupiah(t.price)}</b></div>`).join("")}
+          ${s.tiers
+            .map((t) =>
+              selectable
+                ? `<label class="tier-price-row tier-check"><input type="checkbox" class="tier-checkbox" data-price="${Number(t.price) || 0}"><span class="tier-label">${escapeHtml(t.label)}</span><b>${rupiah(t.price)}</b></label>`
+                : `<div class="tier-price-row"><span>${escapeHtml(t.label)}</span><b>${rupiah(t.price)}</b></div>`
+            )
+            .join("")}
         </div>`
             : ""
         }
       </div>
-      <div class="ticket-perf"></div>
+      ${
+        selectable
+          ? ""
+          : `<div class="ticket-perf"></div>
       <div class="ticket-bottom${hasPrice ? "" : " no-price"}">
         ${hasPrice ? `<span class="price">mulai ${rupiah(s.startingPrice)}</span>` : ""}
         <a href="#" class="mini-link js-wa-open" data-service="${escapeHtml(s.name)}">Booking →</a>
-      </div>
+      </div>`
+      }
     </div>`;
     })
     .join("");
   wireWaOpenLinks();
+  const checkout = document.getElementById("layananCheckout");
+  if (checkout) checkout.style.display = selectable ? "flex" : "none";
+  updateLayananTotal();
 }
+
+// Ambil semua centang di halaman, dikelompokkan per layanan.
+function collectLayananSelections() {
+  return [...document.querySelectorAll("#servicesGrid .ticket")]
+    .map((t) => ({
+      name: t.dataset.service,
+      items: [...t.querySelectorAll(".tier-checkbox:checked")].map((b) => ({
+        label: b.closest(".tier-check").querySelector(".tier-label").textContent.trim(),
+        price: Number(b.dataset.price) || 0,
+      })),
+    }))
+    .filter((g) => g.items.length > 0);
+}
+
+function updateLayananTotal() {
+  const el = document.getElementById("layananTotal");
+  if (!el) return;
+  const total = collectLayananSelections().reduce((sum, g) => sum + g.items.reduce((s, i) => s + i.price, 0), 0);
+  el.textContent = rupiah(total);
+}
+
+document.getElementById("bookingAllBtn").addEventListener("click", () => {
+  const groups = collectLayananSelections();
+  if (groups.length === 0) {
+    showToast("Centang dulu layanan yang ingin dibooking");
+    return;
+  }
+  window.open(waLink(buildCombinedBookingMessage(groups)), "_blank", "noopener");
+});
 
 async function loadServicesForCategory(category) {
   const res = await fetch("/api/services?category=" + encodeURIComponent(category));
   const services = await res.json();
-  renderServiceTickets(services, document.getElementById("servicesGrid"));
+  renderServiceTickets(services, document.getElementById("servicesGrid"), category);
 }
 
+// Saat centang berubah, total gabungan semua layanan ikut diperbarui.
+document.getElementById("servicesGrid").addEventListener("change", (e) => {
+  if (e.target.classList.contains("tier-checkbox")) updateLayananTotal();
+});
+
+// Carousel kategori layanan (mobile): 1 kartu penuh per layanan, panah untuk pindah.
+let activeCat = 0;
+function updateCatCarousel() {
+  const cards = document.querySelectorAll("#layananCategories .layanan-cat-card");
+  cards.forEach((c, i) => c.classList.toggle("is-active", i === activeCat));
+  document.getElementById("catPrev").classList.toggle("is-hidden", activeCat === 0);
+  document.getElementById("catNext").classList.toggle("is-hidden", activeCat === cards.length - 1);
+}
+function moveCat(step) {
+  const total = document.querySelectorAll("#layananCategories .layanan-cat-card").length;
+  activeCat = Math.min(total - 1, Math.max(0, activeCat + step));
+  updateCatCarousel();
+}
+document.getElementById("catPrev").addEventListener("click", () => moveCat(-1));
+document.getElementById("catNext").addEventListener("click", () => moveCat(1));
+(function () {
+  let startX = null;
+  const box = document.getElementById("layananCategories");
+  box.addEventListener("touchstart", (e) => (startX = e.touches[0].clientX), { passive: true });
+  box.addEventListener("touchend", (e) => {
+    if (startX === null) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    startX = null;
+    if (Math.abs(dx) > 50) moveCat(dx < 0 ? 1 : -1);
+  });
+})();
+updateCatCarousel();
+
 function showLayananCategories() {
-  document.getElementById("layananCategories").style.display = "flex";
+  document.getElementById("layananCategories").style.display = "grid";
   document.getElementById("layananDetail").style.display = "none";
 }
 
@@ -130,6 +241,26 @@ async function showLayananDetail(category) {
 function layananCategoryFromPath(pathname) {
   const m = pathname.match(/^\/layanan\/([a-z-]+)\/?$/);
   return m && LAYANAN_META[m[1]] ? m[1] : null;
+}
+
+// Gambar kartu kategori (diunggah admin lewat dashboard). Kalau belum ada, kartu tetap pakai ikon emoji.
+async function loadCategoryImages() {
+  try {
+    const res = await fetch("/api/services/category-images");
+    const images = await res.json();
+    Object.entries(images).forEach(([cat, url]) => {
+      const box = document.querySelector(`[data-cat-img="${cat}"]`);
+      if (!box || !url) return;
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = LAYANAN_META[cat] ? LAYANAN_META[cat].label : cat;
+      img.loading = "lazy";
+      box.innerHTML = "";
+      box.appendChild(img);
+    });
+  } catch {
+    /* gagal muat gambar -> biarkan ikon emoji */
+  }
 }
 
 function renderLayananRoute() {
@@ -198,7 +329,7 @@ async function loadCategories() {
   categories.forEach((cat) => {
     const opt = document.createElement("option");
     opt.value = cat;
-    opt.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+    opt.textContent = cat.replace(/\b\w/g, (c) => c.toUpperCase());
     select.appendChild(opt);
   });
 }
@@ -282,6 +413,17 @@ const overlay = document.getElementById("overlay");
 const pdetailModal = document.getElementById("pdetailModal");
 let activeDetailId = null;
 let activeDetailVariant = null; // label varian yang sedang dipilih, null = produk tanpa varian
+let activeDetailImages = []; // daftar foto produk yang sedang dibuka di modal detail
+
+document.getElementById("pdetailThumbs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".pdetail-thumb");
+  if (!btn) return;
+  const url = activeDetailImages[Number(btn.dataset.idx)];
+  const main = document.querySelector("#pdetailIcon img");
+  if (!url || !main) return;
+  main.src = url;
+  document.querySelectorAll("#pdetailThumbs .pdetail-thumb").forEach((b) => b.classList.toggle("active", b === btn));
+});
 
 function openDetail(id) {
   const p = (window.__lastItems || []).find((x) => x.id === id);
@@ -289,7 +431,21 @@ function openDetail(id) {
   activeDetailId = id;
   document.getElementById("pdetailCat").textContent = p.category;
   const iconEl = document.getElementById("pdetailIcon");
-  iconEl.innerHTML = p.image ? `<img src="${p.image}" alt="${escapeHtml(p.name)}">` : p.icon;
+  const images = p.images && p.images.length ? p.images : p.image ? [p.image] : [];
+  activeDetailImages = images;
+  iconEl.innerHTML = images.length ? `<img src="${images[0]}" alt="${escapeHtml(p.name)}">` : p.icon;
+  // Lebih dari 1 foto -> tampilkan thumbnail untuk ganti foto utama
+  const thumbs = document.getElementById("pdetailThumbs");
+  document.getElementById("pdetailArt").classList.toggle("has-thumbs", images.length > 1);
+  thumbs.innerHTML =
+    images.length > 1
+      ? images
+          .map(
+            (u, i) =>
+              `<button type="button" class="pdetail-thumb ${i === 0 ? "active" : ""}" data-idx="${i}" aria-label="Foto ${i + 1}"><img src="${u}" alt=""></button>`
+          )
+          .join("")
+      : "";
   document.getElementById("pdetailName").textContent = p.name;
   document.getElementById("pdetailDesc").textContent = p.description;
 
@@ -648,9 +804,25 @@ function wireWaOpenLinks() {
   document.querySelectorAll(".js-wa-open").forEach((el) => {
     el.addEventListener("click", (e) => {
       e.preventDefault();
-      const msg = el.dataset.service
-        ? buildBookingMessage(el.dataset.service)
-        : el.dataset.msg || "Halo Noona!";
+      let msg;
+      if (el.dataset.service) {
+        // Ambil varian yang dicentang di card ini (kalau card-nya punya checkbox)
+        const ticket = el.closest(".ticket");
+        const boxes = ticket ? [...ticket.querySelectorAll(".tier-checkbox")] : [];
+        const selections = boxes
+          .filter((b) => b.checked)
+          .map((b) => ({
+            label: b.closest(".tier-check").querySelector(".tier-label").textContent.trim(),
+            price: Number(b.dataset.price) || 0,
+          }));
+        if (boxes.length > 0 && selections.length === 0) {
+          showToast("Centang dulu layanan yang ingin dibooking");
+          return;
+        }
+        msg = buildBookingMessage(el.dataset.service, selections);
+      } else {
+        msg = el.dataset.msg || "Halo Noona!";
+      }
       window.open(waLink(msg), "_blank", "noopener");
     });
   });
@@ -673,11 +845,6 @@ document.getElementById("categorySelect").addEventListener("change", (e) => {
   loadProducts();
 });
 
-document.getElementById("sortSelect").addEventListener("change", (e) => {
-  state.sort = e.target.value;
-  loadProducts();
-});
-
 // ---------- toast ----------
 let toastTimeout;
 function showToast(msg) {
@@ -692,6 +859,7 @@ function showToast(msg) {
 (async function init() {
   await loadConfig();
   renderLayananRoute();
+  loadCategoryImages();
   await loadCategories();
   await loadProducts();
   await pruneStaleCartEntries();

@@ -23,7 +23,7 @@ const ALLOWED_MIME = {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 3 * 1024 * 1024 }, // maks 3MB
+  limits: { fileSize: 3 * 1024 * 1024, files: db.MAX_IMAGES }, // maks 3MB per foto, maks 5 foto sekali kirim
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_MIME[file.mimetype]) {
       return cb(new Error("Format file harus JPG, PNG, atau WEBP."));
@@ -95,8 +95,12 @@ router.put(
   "/:id",
   requireAuth,
   wrap(async (req, res) => {
+    const existing = await db.getById(req.params.id);
     const updated = await db.update(req.params.id, req.body || {});
     if (!updated) return res.status(404).json({ error: "Produk tidak ditemukan." });
+    // Foto yang tadinya ada tapi tidak lagi ada di daftar -> hapus filenya dari Storage
+    const dropped = (existing?.images || []).filter((u) => !updated.images.includes(u));
+    await Promise.all(dropped.map((u) => storage.deleteByUrl(u)));
     res.json(updated);
   })
 );
@@ -124,54 +128,56 @@ router.delete(
     const existing = await db.getById(req.params.id);
     const ok = await db.remove(req.params.id);
     if (!ok) return res.status(404).json({ error: "Produk tidak ditemukan." });
-    if (existing?.image) await storage.deleteByUrl(existing.image); // buang file fotonya juga
+    await Promise.all((existing?.images || []).map((u) => storage.deleteByUrl(u))); // buang semua file fotonya juga
     res.json({ message: "Produk dihapus." });
   })
 );
 
-// POST /api/products/:id/image  (multipart/form-data, field: "image") — admin only
+// POST /api/products/:id/images  (multipart/form-data, field: "images", boleh banyak file) — admin only
+// Foto ditambahkan di belakang foto yang sudah ada. Foto pertama = foto utama (sampul).
+// Menghapus foto dilakukan lewat PUT /api/products/:id dengan { images: [...URL yang dipertahankan] }.
 router.post(
-  "/:id/image",
+  "/:id/images",
   requireAuth,
   wrap(async (req, res) => {
-    if (!(await db.getById(req.params.id))) {
-      return res.status(404).json({ error: "Produk tidak ditemukan." });
-    }
+    const existing = await db.getById(req.params.id);
+    if (!existing) return res.status(404).json({ error: "Produk tidak ditemukan." });
 
     // Jalankan multer manual supaya error upload (format/ukuran) dibalas 400 yang rapi
-    const parseErr = await new Promise((resolve) => upload.single("image")(req, res, resolve));
+    const parseErr = await new Promise((resolve) => upload.array("images", db.MAX_IMAGES)(req, res, resolve));
     if (parseErr) {
       const message =
         parseErr.code === "LIMIT_FILE_SIZE"
-          ? "Ukuran foto maksimal 3MB."
+          ? "Ukuran tiap foto maksimal 3MB."
+          : parseErr.code === "LIMIT_UNEXPECTED_FILE" || parseErr.code === "LIMIT_FILE_COUNT"
+          ? `Maksimal ${db.MAX_IMAGES} foto per produk.`
           : parseErr.message || "Gagal mengunggah foto.";
       return res.status(400).json({ error: message });
     }
-    if (!req.file) {
+    const files = req.files || [];
+    if (files.length === 0) {
       return res.status(400).json({ error: "Tidak ada file foto yang dikirim." });
     }
-
-    const ext = ALLOWED_MIME[req.file.mimetype] || path.extname(req.file.originalname) || "";
-    const fileName = `product-${req.params.id}-${Date.now()}${ext}`;
-    const publicUrl = await storage.uploadImage(fileName, req.file.buffer, req.file.mimetype);
-
-    const result = await db.setImage(req.params.id, publicUrl);
-    if (result.previousImage && result.previousImage !== publicUrl) {
-      await storage.deleteByUrl(result.previousImage); // ganti foto lama -> hapus file lama
+    if (existing.images.length + files.length > db.MAX_IMAGES) {
+      return res.status(400).json({
+        error: `Maksimal ${db.MAX_IMAGES} foto per produk (sekarang sudah ada ${existing.images.length}).`,
+      });
     }
-    res.json(result.product);
-  })
-);
 
-// DELETE /api/products/:id/image — hapus foto, kembali ke ikon — admin only
-router.delete(
-  "/:id/image",
-  requireAuth,
-  wrap(async (req, res) => {
-    const result = await db.removeImage(req.params.id);
-    if (!result) return res.status(404).json({ error: "Produk tidak ditemukan." });
-    await storage.deleteByUrl(result.previousImage);
-    res.json(result.product);
+    const uploaded = [];
+    try {
+      for (const [i, file] of files.entries()) {
+        const ext = ALLOWED_MIME[file.mimetype] || path.extname(file.originalname) || "";
+        const fileName = `product-${req.params.id}-${Date.now()}-${i}${ext}`;
+        uploaded.push(await storage.uploadImage(fileName, file.buffer, file.mimetype));
+      }
+    } catch (err) {
+      // satu foto gagal -> batalkan yang sudah terlanjur terunggah supaya tidak jadi file yatim
+      await Promise.all(uploaded.map((u) => storage.deleteByUrl(u)));
+      throw err;
+    }
+
+    res.json(await db.addImages(req.params.id, uploaded));
   })
 );
 

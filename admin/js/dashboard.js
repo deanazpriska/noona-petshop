@@ -4,6 +4,7 @@
 
 const state = { search: "", category: "semua", page: 1, limit: 10 };
 const rupiah = (n) => "Rp " + Number(n).toLocaleString("id-ID");
+const titleCase = (str) => String(str).replace(/\b\w/g, (c) => c.toUpperCase());
 const SERVICE_CATEGORY_LABEL = { grooming: "Grooming", "pet-care": "Pet Care", "pet-hotel": "Pet Hotel" };
 
 // ---------- auth guard (client-side, tambahan) ----------
@@ -33,20 +34,28 @@ async function authFetch(url, options = {}) {
 }
 
 // ---------- categories ----------
+// Daftar filter dibangun ulang dari kategori yang benar-benar dipakai produk saat ini,
+// jadi ikut berubah setiap kali produk ditambah, diedit (ganti kategori), atau dihapus.
 async function loadCategories() {
   const res = await fetch("/api/products/categories");
   const categories = await res.json();
   const select = document.getElementById("categorySelect");
+  if (state.category !== "semua" && !categories.includes(state.category)) {
+    state.category = "semua"; // kategori yang dipilih sudah tidak dipakai produk mana pun
+  }
+  select.innerHTML = '<option value="semua">Semua kategori</option>';
   categories.forEach((cat) => {
     const opt = document.createElement("option");
     opt.value = cat;
-    opt.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+    opt.textContent = titleCase(cat);
     select.appendChild(opt);
   });
+  select.value = state.category;
 }
 
 // ---------- products table ----------
 async function loadProducts() {
+  await loadCategories();
   const params = new URLSearchParams({
     search: state.search,
     category: state.category,
@@ -64,7 +73,7 @@ async function loadProducts() {
 function renderTable(items) {
   const tbody = document.getElementById("tableBody");
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--ink-soft);">Tidak ada produk yang cocok.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--ink-soft);">Tidak ada produk yang cocok.</td></tr>`;
     return;
   }
   tbody.innerHTML = items
@@ -73,14 +82,19 @@ function renderTable(items) {
     <tr>
       <td>
         <div class="prod-name-cell">
-          ${p.image ? `<img class="prod-thumb" src="${p.image}" alt="">` : `<span class="prod-icon">${p.icon}</span>`}
+          ${p.image ? `<img class="prod-thumb" src="${p.image}" alt="">` : ""}
           <div class="txt"><b>${escapeHtml(p.name)}</b><span>${p.sku}</span></div>
         </div>
       </td>
       <td>${p.category}</td>
-      <td>${
+      <td class="vp-cell col-fit col-varian">${
         p.variants && p.variants.length
-          ? `<div class="tier-list-cell">${p.variants.map((v) => `<div><span>${escapeHtml(v.label)}</span><b>${rupiah(v.price)}</b></div>`).join("")}</div>`
+          ? p.variants.map((v) => `<div class="vp-line" title="${escapeHtml(v.label)}">${escapeHtml(v.label)}</div>`).join("")
+          : `<span class="vp-empty">—</span>`
+      }</td>
+      <td class="vp-cell col-fit">${
+        p.variants && p.variants.length
+          ? p.variants.map((v) => `<div class="vp-line vp-price">${rupiah(v.price)}</div>`).join("")
           : rupiah(p.price)
       }</td>
       <td>
@@ -139,25 +153,56 @@ async function deleteProduct(id) {
 const formModal = document.getElementById("formModal");
 const productForm = document.getElementById("productForm");
 const formError = document.getElementById("formError");
-const imagePreview = document.getElementById("imagePreview");
+const imageGallery = document.getElementById("imageGallery");
 const imageInput = document.getElementById("fImageInput");
-const removePhotoBtn = document.getElementById("removePhotoBtn");
+const pickPhotoLabel = document.getElementById("pickPhotoLabel");
 
-let pendingImageFile = null; // foto baru yang dipilih tapi belum diunggah
-let currentImagePath = null; // foto yang sudah tersimpan di server (mode edit)
+const MAX_PRODUCT_IMAGES = 5;
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+let keptImages = []; // URL foto yang sudah tersimpan di server dan masih dipertahankan (urutan pertama = foto utama)
+let pendingFiles = []; // foto baru yang sudah dipilih tapi belum diunggah: [{ file, preview }]
 
-function setPreview(src) {
-  imagePreview.innerHTML = src
-    ? `<img src="${src}" alt="Preview foto produk">`
-    : `<span id="imagePreviewEmpty">Belum ada foto</span>`;
+function renderGallery() {
+  const items = [
+    ...keptImages.map((url, i) => ({ src: url, kind: "kept", idx: i })),
+    ...pendingFiles.map((f, i) => ({ src: f.preview, kind: "new", idx: i })),
+  ];
+  imageGallery.innerHTML = items.length
+    ? items
+        .map(
+          (it, n) => `
+    <div class="gallery-item">
+      <img src="${it.src}" alt="Foto produk ${n + 1}">
+      ${n === 0 ? `<span class="gallery-badge">Utama</span>` : ""}
+      <button type="button" class="gallery-remove" data-kind="${it.kind}" data-idx="${it.idx}" title="Hapus foto" aria-label="Hapus foto ${n + 1}">✕</button>
+    </div>`
+        )
+        .join("")
+    : `<div class="gallery-empty">Belum ada foto</div>`;
+  pickPhotoLabel.style.display = items.length >= MAX_PRODUCT_IMAGES ? "none" : "inline-block";
 }
 
-function resetImageState() {
-  pendingImageFile = null;
-  currentImagePath = null;
+function resetImageState(existingImages = []) {
+  pendingFiles.forEach((f) => URL.revokeObjectURL(f.preview));
+  pendingFiles = [];
+  keptImages = [...existingImages];
   imageInput.value = "";
-  removePhotoBtn.style.display = "none";
-  setPreview(null);
+  renderGallery();
+}
+
+// Dropdown kategori: kalau produk lama masih memakai kategori yang sudah tidak ada di daftar baru
+// (mis. "makanan", "mainan", "kandang"), tampilkan sementara supaya tidak kosong dan bisa dipindah.
+function prepareCategorySelect(current) {
+  const sel = document.getElementById("fCategory");
+  sel.querySelectorAll("option[data-legacy]").forEach((o) => o.remove());
+  if (current && ![...sel.options].some((o) => o.value === current)) {
+    const opt = document.createElement("option");
+    opt.value = current;
+    opt.textContent = `${titleCase(current)} (kategori lama)`;
+    opt.dataset.legacy = "1";
+    sel.appendChild(opt);
+  }
+  if (current) sel.value = current;
 }
 
 function openAddModal() {
@@ -167,6 +212,7 @@ function openAddModal() {
   variantsEditorEl.innerHTML = ""; // varian produk opsional -> kosong = mode harga tunggal
   syncPriceFieldWithVariants();
   formError.classList.remove("show");
+  prepareCategorySelect(null);
   resetImageState();
   formModal.classList.add("open");
 }
@@ -177,8 +223,7 @@ function openEditModal(id) {
   document.getElementById("formTitle").textContent = "Edit Produk";
   document.getElementById("productId").value = p.id;
   document.getElementById("fName").value = p.name;
-  document.getElementById("fCategory").value = p.category;
-  document.getElementById("fIcon").value = p.icon;
+  prepareCategorySelect(p.category);
   document.getElementById("fPrice").value = p.price;
   document.getElementById("fSku").value = p.sku;
   document.getElementById("fDesc").value = p.description;
@@ -186,11 +231,7 @@ function openEditModal(id) {
   syncPriceFieldWithVariants();
   formError.classList.remove("show");
 
-  pendingImageFile = null;
-  imageInput.value = "";
-  currentImagePath = p.image || null;
-  setPreview(p.image || null);
-  removePhotoBtn.style.display = p.image ? "inline-block" : "none";
+  resetImageState(p.images && p.images.length ? p.images : p.image ? [p.image] : []);
 
   formModal.classList.add("open");
 }
@@ -202,35 +243,36 @@ function closeFormModal() {
 document.getElementById("openAddModal").addEventListener("click", openAddModal);
 document.getElementById("cancelForm").addEventListener("click", closeFormModal);
 
-// pilih file baru -> tampilkan preview lokal (belum diunggah sampai form disimpan)
+// pilih foto (boleh banyak sekaligus) -> tampilkan preview lokal (baru diunggah saat form disimpan)
 imageInput.addEventListener("change", () => {
-  const file = imageInput.files[0];
-  if (!file) return;
-  if (file.size > 3 * 1024 * 1024) {
-    showToast("Ukuran foto maksimal 3MB");
-    imageInput.value = "";
-    return;
+  const files = [...imageInput.files];
+  imageInput.value = "";
+  for (const file of files) {
+    if (keptImages.length + pendingFiles.length >= MAX_PRODUCT_IMAGES) {
+      showToast(`Maksimal ${MAX_PRODUCT_IMAGES} foto per produk`);
+      break;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      showToast(`"${file.name}" lebih dari 3MB, dilewati`);
+      continue;
+    }
+    pendingFiles.push({ file, preview: URL.createObjectURL(file) });
   }
-  pendingImageFile = file;
-  const reader = new FileReader();
-  reader.onload = (e) => setPreview(e.target.result);
-  reader.readAsDataURL(file);
-  removePhotoBtn.style.display = "inline-block";
+  renderGallery();
 });
 
-// hapus foto — kalau produk sudah ada, langsung hapus di server; kalau produk baru, cukup batalkan pilihan
-removePhotoBtn.addEventListener("click", async () => {
-  const id = document.getElementById("productId").value;
-  if (id && currentImagePath) {
-    try {
-      await authFetch(`/api/products/${id}/image`, { method: "DELETE" });
-      showToast("Foto dihapus");
-    } catch {
-      showToast("Gagal menghapus foto");
-      return;
-    }
+// hapus satu foto dari daftar — baru berlaku di server setelah tombol Simpan ditekan
+imageGallery.addEventListener("click", (e) => {
+  const btn = e.target.closest(".gallery-remove");
+  if (!btn) return;
+  const idx = Number(btn.dataset.idx);
+  if (btn.dataset.kind === "kept") {
+    keptImages.splice(idx, 1);
+  } else {
+    const [removed] = pendingFiles.splice(idx, 1);
+    if (removed) URL.revokeObjectURL(removed.preview);
   }
-  resetImageState();
+  renderGallery();
 });
 
 productForm.addEventListener("submit", async (e) => {
@@ -241,12 +283,12 @@ productForm.addEventListener("submit", async (e) => {
   const payload = {
     name: document.getElementById("fName").value.trim(),
     category: document.getElementById("fCategory").value,
-    icon: document.getElementById("fIcon").value.trim() || "🐾",
     price: Number(document.getElementById("fPrice").value),
     sku: document.getElementById("fSku").value.trim() || undefined,
     description: document.getElementById("fDesc").value.trim(),
     variants: variantEditor.collectRows(),
   };
+  if (id) payload.images = keptImages; // daftar foto lama yang dipertahankan (yang dihapus ikut terhapus di server)
 
   try {
     const res = await authFetch(id ? `/api/products/${id}` : "/api/products", {
@@ -262,16 +304,21 @@ productForm.addEventListener("submit", async (e) => {
     }
 
     // kalau ada foto baru yang dipilih, unggah sekarang menyusul produk yang baru dibuat/diupdate
-    if (pendingImageFile) {
-      const savedId = data.id;
+    if (pendingFiles.length > 0) {
       const fd = new FormData();
-      fd.append("image", pendingImageFile);
-      const uploadRes = await authFetch(`/api/products/${savedId}/image`, {
+      pendingFiles.forEach(({ file }) => fd.append("images", file));
+      const uploadRes = await authFetch(`/api/products/${data.id}/images`, {
         method: "POST",
         body: fd, // jangan set Content-Type manual — browser yang atur boundary multipart
       });
       if (!uploadRes.ok) {
-        showToast("Produk tersimpan, tapi foto gagal diunggah");
+        let reason = "";
+        try {
+          reason = (await uploadRes.json()).error || "";
+        } catch {
+          /* abaikan */
+        }
+        showToast(`Produk tersimpan, tapi foto gagal diunggah${reason ? `: ${reason}` : ""}`);
       }
     }
 
@@ -312,7 +359,6 @@ function showToast(msg) {
 
 // ---------- init ----------
 checkAuth();
-loadCategories();
 loadProducts();
 
 // ============================================================
@@ -325,7 +371,10 @@ document.querySelectorAll(".admin-tab").forEach((btn) => {
     btn.classList.add("active");
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
 
-    if (btn.dataset.tab === "layanan") loadServices();
+    if (btn.dataset.tab === "layanan") {
+      loadServices();
+      loadCategoryImages();
+    }
     if (btn.dataset.tab === "pesanan") loadOrders();
   });
 });
@@ -367,7 +416,6 @@ async function loadServices() {
     <tr>
       <td>
         <div class="prod-name-cell">
-          <span class="prod-icon">${s.icon}</span>
           <div class="txt"><b>${escapeHtml(s.name)}</b></div>
         </div>
       </td>
@@ -386,6 +434,66 @@ async function loadServices() {
     )
     .join("");
 }
+
+// ---------- gambar kartu kategori layanan (Grooming / Pet Care / Pet Hotel) ----------
+function renderCategoryImages(images) {
+  document.querySelectorAll(".cat-image-slot").forEach((slot) => {
+    const url = images[slot.dataset.cat];
+    slot.querySelector(".cat-image-preview").innerHTML = url
+      ? `<img src="${url}" alt="">`
+      : `<span>Belum ada gambar</span>`;
+    slot.querySelector(".btn-remove-photo").style.display = url ? "inline-block" : "none";
+  });
+}
+
+async function loadCategoryImages() {
+  try {
+    const res = await fetch("/api/services/category-images");
+    renderCategoryImages(await res.json());
+  } catch {
+    /* diamkan — panel tetap tampil dengan status "Belum ada gambar" */
+  }
+}
+
+const catImagesGrid = document.getElementById("catImagesGrid");
+
+// pilih gambar -> langsung diunggah (tidak perlu tombol simpan)
+catImagesGrid.addEventListener("change", async (e) => {
+  const input = e.target;
+  if (input.type !== "file" || !input.files[0]) return;
+  const file = input.files[0];
+  input.value = "";
+  if (file.size > MAX_IMAGE_BYTES) {
+    showToast("Ukuran gambar maksimal 3MB");
+    return;
+  }
+  const category = input.closest(".cat-image-slot").dataset.cat;
+  const fd = new FormData();
+  fd.append("image", file);
+  try {
+    const res = await authFetch(`/api/services/category-images/${category}`, { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Gagal mengunggah gambar");
+    renderCategoryImages(data);
+    showToast("Gambar kartu diperbarui ✓");
+  } catch (err) {
+    showToast(err.message || "Gagal mengunggah gambar");
+  }
+});
+
+catImagesGrid.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".btn-remove-photo");
+  if (!btn) return;
+  const category = btn.closest(".cat-image-slot").dataset.cat;
+  try {
+    const res = await authFetch(`/api/services/category-images/${category}`, { method: "DELETE" });
+    if (!res.ok) throw new Error();
+    renderCategoryImages(await res.json());
+    showToast("Gambar kartu dihapus");
+  } catch {
+    showToast("Gagal menghapus gambar");
+  }
+});
 
 const serviceFormModal = document.getElementById("serviceFormModal");
 const serviceForm = document.getElementById("serviceForm");
@@ -475,7 +583,6 @@ function openEditServiceModal(id) {
   document.getElementById("serviceId").value = s.id;
   document.getElementById("sName").value = s.name;
   document.getElementById("sCategory").value = s.category || "grooming";
-  document.getElementById("sIcon").value = s.icon;
   document.getElementById("sDesc").value = s.description;
   tierEditor.reset(s.tiers);
   serviceFormError.classList.remove("show");
@@ -500,7 +607,6 @@ serviceForm.addEventListener("submit", async (e) => {
 
   const payload = {
     name: document.getElementById("sName").value.trim(),
-    icon: document.getElementById("sIcon").value.trim() || "🐾",
     category: document.getElementById("sCategory").value,
     description: document.getElementById("sDesc").value.trim(),
     tiers,

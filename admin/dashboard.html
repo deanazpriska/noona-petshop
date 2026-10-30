@@ -54,7 +54,7 @@
     <div class="table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>Produk</th><th>Kategori</th><th>Harga</th><th>Aksi</th></tr>
+          <tr><th>Produk</th><th>Kategori</th><th class="col-fit">Varian</th><th class="col-fit">Harga</th><th>Aksi</th></tr>
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
@@ -70,6 +70,37 @@
         <div class="sub">Grooming, Pet Hotel, dan layanan booking lainnya.</div>
       </div>
       <button class="add-product-btn" id="openAddServiceModal">+ Tambah Layanan</button>
+    </div>
+
+    <div class="cat-images-panel">
+      <h3>Gambar Kartu Layanan</h3>
+      <div class="sub">Gambar yang tampil di kartu Grooming, Pet Care, dan Pet Hotel di halaman katalog (JPG/PNG/WEBP, maks 3MB).</div>
+      <div class="cat-images-grid" id="catImagesGrid">
+        <div class="cat-image-slot" data-cat="grooming">
+          <div class="cat-image-preview"><span>Belum ada gambar</span></div>
+          <div class="cat-image-name">Grooming</div>
+          <div class="cat-image-actions">
+            <label class="btn-pick-file">Pilih gambar…<input type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+            <button type="button" class="btn-remove-photo" style="display:none;">Hapus</button>
+          </div>
+        </div>
+        <div class="cat-image-slot" data-cat="pet-care">
+          <div class="cat-image-preview"><span>Belum ada gambar</span></div>
+          <div class="cat-image-name">Pet Care</div>
+          <div class="cat-image-actions">
+            <label class="btn-pick-file">Pilih gambar…<input type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+            <button type="button" class="btn-remove-photo" style="display:none;">Hapus</button>
+          </div>
+        </div>
+        <div class="cat-image-slot" data-cat="pet-hotel">
+          <div class="cat-image-preview"><span>Belum ada gambar</span></div>
+          <div class="cat-image-name">Pet Hotel</div>
+          <div class="cat-image-actions">
+            <label class="btn-pick-file">Pilih gambar…<input type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+            <button type="button" class="btn-remove-photo" style="display:none;">Hapus</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -121,20 +152,16 @@
         <label for="fName">Nama produk</label>
         <input type="text" id="fName" required>
       </div>
-      <div class="form-row-2">
+      <div class="form-row-2" style="grid-template-columns:1fr;">
         <div>
           <label for="fCategory">Kategori</label>
           <select id="fCategory" required>
-            <option value="makanan">Makanan</option>
+            <option value="makanan kering">Makanan Kering</option>
+            <option value="makanan basah">Makanan Basah</option>
+            <option value="creamy treats">Creamy Treats</option>
             <option value="aksesoris">Aksesoris</option>
-            <option value="mainan">Mainan</option>
             <option value="kesehatan">Kesehatan</option>
-            <option value="kandang">Kandang</option>
           </select>
-        </div>
-        <div>
-          <label for="fIcon">Ikon (emoji)</label>
-          <input type="text" id="fIcon" maxlength="4" placeholder="🐾">
         </div>
       </div>
       <div>
@@ -153,15 +180,11 @@
         <div class="field-hint">Kalau diisi, field "Harga" di atas tidak dipakai lagi — pelanggan wajib pilih salah satu varian.</div>
       </div>
       <div>
-        <label for="fImageInput">Foto produk (JPG/PNG/WEBP, maks 3MB)</label>
-        <div class="image-upload-row">
-          <div class="image-preview" id="imagePreview"><span id="imagePreviewEmpty">Belum ada foto</span></div>
-          <div class="image-upload-actions">
-            <label class="btn-pick-file" for="fImageInput">Pilih foto…</label>
-            <input type="file" id="fImageInput" accept="image/jpeg,image/png,image/webp" hidden>
-            <button type="button" class="btn-remove-photo" id="removePhotoBtn" style="display:none;">Hapus foto</button>
-          </div>
-        </div>
+        <label for="fImageInput">Foto produk (maks. 5 foto, JPG/PNG/WEBP, maks 3MB per foto)</label>
+        <div class="image-gallery" id="imageGallery"></div>
+        <label class="btn-pick-file" for="fImageInput" id="pickPhotoLabel">+ Tambah foto…</label>
+        <input type="file" id="fImageInput" accept="image/jpeg,image/png,image/webp" multiple hidden>
+        <div class="field-hint">Foto pertama jadi foto utama di katalog. Foto bisa dipilih beberapa sekaligus.</div>
       </div>
       <div>
         <label for="fDesc">Deskripsi</label>
@@ -186,7 +209,7 @@
         <label for="sName">Nama layanan</label>
         <input type="text" id="sName" required>
       </div>
-      <div class="form-row-2">
+      <div class="form-row-2" style="grid-template-columns:1fr;">
         <div>
           <label for="sCategory">Kategori</label>
           <select id="sCategory" required>
@@ -194,10 +217,6 @@
             <option value="pet-care">Pet Care</option>
             <option value="pet-hotel">Pet Hotel</option>
           </select>
-        </div>
-        <div>
-          <label for="sIcon">Ikon (emoji)</label>
-          <input type="text" id="sIcon" maxlength="4" placeholder="🛁">
         </div>
       </div>
       <div>

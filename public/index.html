@@ -69,16 +69,18 @@
       <h2>Booking layanan langsung via WhatsApp</h2>
     </div>
     <div class="layanan-categories" id="layananCategories">
+      <button type="button" class="cat-arrow cat-arrow-prev" id="catPrev" aria-label="Layanan sebelumnya">&#8249;</button>
+      <button type="button" class="cat-arrow cat-arrow-next" id="catNext" aria-label="Layanan berikutnya">&#8250;</button>
       <button type="button" class="layanan-cat-card" data-category="grooming">
-        <span class="layanan-cat-icon">🛁</span>
+        <span class="layanan-cat-img" data-cat-img="grooming"><span class="layanan-cat-fallback">🛁</span></span>
         <span class="layanan-cat-label">Grooming</span>
       </button>
       <button type="button" class="layanan-cat-card" data-category="pet-care">
-        <span class="layanan-cat-icon">🐾</span>
+        <span class="layanan-cat-img" data-cat-img="pet-care"><span class="layanan-cat-fallback">🐾</span></span>
         <span class="layanan-cat-label">Pet Care</span>
       </button>
       <button type="button" class="layanan-cat-card" data-category="pet-hotel">
-        <span class="layanan-cat-icon">🏠</span>
+        <span class="layanan-cat-img" data-cat-img="pet-hotel"><span class="layanan-cat-fallback">🏠</span></span>
         <span class="layanan-cat-label">Pet Hotel</span>
       </button>
     </div>
@@ -90,6 +92,10 @@
         <h3 id="layananDetailTitle"></h3>
       </div>
       <div class="services-grid" id="servicesGrid"></div>
+      <div class="layanan-checkout" id="layananCheckout" style="display:none;">
+        <div class="layanan-total">Total: <b id="layananTotal">Rp 0</b></div>
+        <button type="button" class="btn-booking-all" id="bookingAllBtn">Booking Sekarang</button>
+      </div>
       <p class="layanan-note" id="layananNote" style="display:none;"></p>
     </div>
   </section>
@@ -103,12 +109,6 @@
     <div class="toolbar">
       <div class="search-row">
         <input type="text" id="searchInput" placeholder="Cari produk, misal: shampoo, Royal Canin, harness…" aria-label="Cari produk">
-        <select id="sortSelect" aria-label="Urutkan">
-          <option value="">Urutkan</option>
-          <option value="price_asc">Harga terendah</option>
-          <option value="price_desc">Harga tertinggi</option>
-          <option value="name_asc">Nama A–Z</option>
-        </select>
       </div>
       <div class="filters-row">
         <select id="categorySelect" aria-label="Filter kategori">
@@ -189,6 +189,7 @@
     <div class="pdetail-art" id="pdetailArt">
       <span class="pdetail-cat" id="pdetailCat"></span>
       <span id="pdetailIcon"></span>
+      <div class="pdetail-thumbs" id="pdetailThumbs"></div>
     </div>
     <div class="pdetail-body">
       <h3 id="pdetailName"></h3>

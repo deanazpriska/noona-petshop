@@ -78,4 +78,47 @@ async function remove(id) {
   return (await run("DELETE FROM services WHERE id = $1", [n])) > 0;
 }
 
-module.exports = { getAll, getById, create, update, remove };
+// ---------- gambar kartu kategori layanan (Grooming / Pet Care / Pet Hotel) ----------
+// Disimpan di tabel app_meta (key "layanan_cat_image_<kategori>" -> URL foto di Supabase Storage),
+// jadi tidak perlu tabel baru.
+const CAT_IMAGE_PREFIX = "layanan_cat_image_";
+
+async function getCategoryImages() {
+  const rows = await all("SELECT key, value FROM app_meta WHERE key LIKE $1", [CAT_IMAGE_PREFIX + "%"]);
+  const result = Object.fromEntries(CATEGORIES.map((c) => [c, null]));
+  rows.forEach((r) => {
+    const cat = r.key.slice(CAT_IMAGE_PREFIX.length);
+    if (CATEGORIES.includes(cat)) result[cat] = r.value || null;
+  });
+  return result;
+}
+
+// Simpan URL baru, kembalikan URL lama (kalau ada) supaya filenya bisa dihapus dari Storage.
+async function setCategoryImage(category, url) {
+  const key = CAT_IMAGE_PREFIX + category;
+  const prev = await get("SELECT value FROM app_meta WHERE key = $1", [key]);
+  await run(
+    "INSERT INTO app_meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+    [key, url]
+  );
+  return prev ? prev.value : null;
+}
+
+async function removeCategoryImage(category) {
+  const key = CAT_IMAGE_PREFIX + category;
+  const prev = await get("SELECT value FROM app_meta WHERE key = $1", [key]);
+  await run("DELETE FROM app_meta WHERE key = $1", [key]);
+  return prev ? prev.value : null;
+}
+
+module.exports = {
+  CATEGORIES,
+  getAll,
+  getById,
+  create,
+  update,
+  remove,
+  getCategoryImages,
+  setCategoryImage,
+  removeCategoryImage,
+};
